@@ -1,0 +1,28 @@
+# version control
+.git
+.gitignore
+
+# dependencies / build output (installed and built inside the image itself)
+node_modules
+dist
+/build
+
+# tests / coverage
+coverage
+/.nyc_output
+
+# local env — supplied to the container via docker-compose's env_file/environment instead
+.env
+.env.*
+
+# editor / OS
+.vscode
+.idea
+.DS_Store
+
+# logs
+*.log
+npm-debug.log*
+
+# Claude Code local session/config
+.claude

@@ -1,0 +1,76 @@
+version: '3.9'
+services:
+  rabbitmq:
+    image: 'rabbitmq:3-management'
+    container_name: 'rabbitmq'
+    restart: always
+    ports:
+      - '5672:5672' # AMQP Protocol Port
+      - '15672:15672' # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+    ports:
+      - 3001:3001
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      DB_DATABASE: postgres
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_TTL: 900
+      RABBITMQ_QUEUE: bitcoin_processing
+      RABBITMQ_URL: 'amqp://user:password@rabbitmq:5672'
+    volumes:
+      - ./src:/app/src
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    # Optional: lets a developer override any of the above locally without
+    # touching this file. docker-compose up must work even if .env is absent
+    # (e.g. a fresh checkout), hence required: false.
+    env_file:
+      - path: .env
+        required: false
+
+  db:
+    image: postgres
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
